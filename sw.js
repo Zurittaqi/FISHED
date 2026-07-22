@@ -8,8 +8,8 @@ const APP_SHELL_FILES = [
   './',
   './index.html',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/ficon-192.png',
+  './icons/ficon-512.png'
 ];
 
 // --- INSTALL: precache app shell ---
