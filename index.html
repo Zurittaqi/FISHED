@@ -1,0 +1,2755 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0"/>
+  <title>Fished Game</title>
+
+  <!-- PWA: manifest & ikon -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#4682B4" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icons/icon-512.png" />
+
+  <!-- PWA: dukungan iOS Safari (Add to Home Screen) -->
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Fished" />
+  <style>
+    * { 
+      box-sizing: border-box; 
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #87CEEB 0%, #4682B4 100%);
+      text-align: center;
+      padding: 10px 5px 0;
+      margin: 0;
+      cursor: auto;
+      font-size: 16px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    h1 {
+      font-size: clamp(18px, 4.5vw, 28px);
+      margin: 8px 0;
+      color: #2c3e50;
+      text-shadow: 2px 2px 4px rgba(255,255,255,0.3);
+      font-weight: 700;
+    }
+    
+    h2 {
+      font-size: clamp(11px, 3vw, 16px);
+      margin: 5px 0 12px 0;
+      color: #34495e;
+      font-weight: 500;
+    }
+
+    .game-container {
+      position: relative;
+      width: 100%;
+      max-width: min(75vw, 600px);
+      aspect-ratio: 20 / 9;
+      --ar: 2.2222;
+      margin: 10px auto;
+      background: url('https://i.imgur.com/rYeTq9Q.jpeg') center center / cover no-repeat;
+      border: clamp(2px, 0.8vw, 4px) solid #2c3e50;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+#start-button, #fullscreen-button, .pause-button, .sound-control, #exit-button, #mode-select {
+  pointer-events: auto !important;
+  z-index: 100000; 
+}
+
+.pause-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.pause-actions button {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  touch-action: manipulation;
+}
+
+#resume-button, #confirm-cancel-exit {
+  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  color: white;
+}
+
+#quit-button, #confirm-exit-button {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+#cancel-exit-button {
+  background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+  color: white;
+}
+
+#restart-button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+    .basket {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      font-size: clamp(26px, 7vw, 42px);
+      z-index: 3;
+      pointer-events: none;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+      transition: transform 0.15s ease;
+    }
+
+    .basket.basket-bump {
+      transform: scale(1.25) rotate(-8deg);
+    }
+
+    .water-rays {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse at 30% 10%, 
+        rgba(255,255,255,0.3) 0%, 
+        rgba(255,255,255,0.1) 20%, 
+        transparent 40%),
+      radial-gradient(ellipse at 70% 15%, 
+        rgba(255,255,255,0.2) 0%, 
+        rgba(255,255,255,0.05) 25%, 
+        transparent 50%);
+      pointer-events: none;
+      animation: sunRays 10s infinite alternate;
+      z-index: 1;
+    }
+    @keyframes sunRays {
+      0% { opacity: 0.6; transform: scale(1); }
+      100% { opacity: 1; transform: scale(1.05); }
+    }
+
+    .ikan {
+      position: absolute;
+      background-size: cover;
+      background-repeat: no-repeat;
+      transition: top 1.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                  left 1.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                  filter 0.5s ease;
+      z-index: 2;
+      cursor: pointer;
+      min-width: 30px;
+      min-height: 30px;
+      border-radius: 50%;
+      touch-action: manipulation;
+    }
+
+	.ikan.red-flash {
+	  filter: drop-shadow(0 0 12px red) brightness(1.5);
+	}
+
+    /* Touch feedback */
+    .ikan:active {
+      transform: scale(0.95);
+      filter: brightness(1.2);
+    }
+
+    .ikan.rare-fish {
+	box-shadow: 0 0 15px rgba(0, 255, 0, 0.8); /* hijau */
+	filter: drop-shadow(0 0 8px rgba(0, 200, 0, 0.8));
+	animation: rareGlow 2s infinite alternate;
+    }
+
+    .ikan.golden-fish {
+      box-shadow: 0 0 25px rgba(255, 215, 0, 1);
+      animation: goldenGlow 1s infinite alternate;
+    }
+
+    @keyframes rareGlow {
+      0% { box-shadow: 0 0 15px rgba(255, 215, 0, 0.8); }
+      100% { box-shadow: 0 0 25px rgba(255, 215, 0, 1); }
+    }
+
+    @keyframes goldenGlow {
+      0% { box-shadow: 0 0 25px rgba(255, 215, 0, 1); }
+      100% { box-shadow: 0 0 35px rgba(255, 215, 0, 0.7); }
+    }
+
+    #start-button {
+  padding: clamp(4px, 2vw, 5px) clamp(8px, 1.5vw, 12px); /* padding kiri-kanan dikurangi */
+  font-size: clamp(10px, 2.5vw, 12px);
+  cursor: pointer;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  margin-bottom: 15px;
+  min-height: 32px;
+  min-width: 100px; /* lebar minimum dikurangi */
+  touch-action: manipulation;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+  transition: all 0.3s ease;
+}
+
+    #start-button:hover, #start-button:focus {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
+    }
+
+    #start-button:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 10px rgba(46, 204, 113, 0.3);
+    }
+
+    /* New game info bar outside container */
+    .game-info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: min(90vw, 600px);
+      margin: 0 auto 10px auto;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 0 5px;
+      position: relative;
+    }
+
+    .game-stats {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-right: clamp(80px, 20vw, 96px); /* beri ruang agar tidak tertindih tombol top-right */
+    }
+
+    /* Tombol pause & keluar selalu di pojok kanan atas kotak game,
+       lepas dari flow .game-info-bar supaya tidak ikut wrap ke bawah
+       di layar kecil maupun saat fullscreen */
+    .game-controls {
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      z-index: 60;
+    }
+
+    	#score, #level, #target, #high-score {
+	  font-size: clamp(14px, 3vw, 17px);
+	  color: #fff;
+	  font-weight: bold;
+	  background: rgba(0, 0, 0, 0.1);
+	  padding: clamp(3px, 1.2vw, 6px) clamp(6px, 2vw, 10px);
+	  border-radius: 12px;
+	  margin: 0 1px;
+	  border: 1px solid rgba(70, 130, 180, 0.0001);
+	  backdrop-filter: blur(3px);
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .sound-control, .pause-button {
+      background: linear-gradient(135deg, #FFEB3B, #F1C40F);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 14px;
+      cursor: pointer;
+      touch-action: manipulation;
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .sound-control:hover, .pause-button:hover {
+      background: linear-gradient(135deg, #FFD700, #FFEB3B);
+      transform: scale(1.05);
+    }
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  row-gap: 10px;
+}
+
+.volume-slider {
+  width: 100px;
+  height: 6px;
+  background: #ddd;
+  border-radius: 3px;
+  outline: none;
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  background: #FF6347;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.volume-label {
+  font-size: 12px;
+  color: white;
+  font-weight: bold;
+  min-width: 30px;
+  text-align: center;
+}
+:fullscreen,
+:-webkit-full-screen {
+  background: #000;
+}
+
+:fullscreen body,
+:-webkit-full-screen body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 0;
+  background: #000;
+}
+
+/* Sembunyikan elemen di luar kotak game saat fullscreen agar kotak game
+   jadi satu-satunya acuan proporsi layar */
+:fullscreen h1, :fullscreen h2, :fullscreen .volume-control,
+:-webkit-full-screen h1, :-webkit-full-screen h2, :-webkit-full-screen .volume-control {
+  display: none;
+}
+
+/* Kotak game dibatasi mengikuti sisi TERPENDEK layar (HP maupun komputer)
+   supaya tidak melar/terdistorsi, memakai trik letterbox width/height 100%
+   yang saling membatasi lewat max-width & max-height berdasar --ar */
+:fullscreen .game-container,
+:-webkit-full-screen .game-container {
+  width: 100vw;
+  height: 100vh;
+  max-width: calc(100vh * var(--ar));
+  max-height: calc(100vw / var(--ar));
+  aspect-ratio: auto;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+
+    .bubble {
+      position: absolute;
+      bottom: 0;
+      width: clamp(4px, 1.2vw, 6px);
+      height: clamp(4px, 1.2vw, 6px);
+      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.4) 70%, transparent 100%);
+      border-radius: 50%;
+      animation: rise 8s infinite linear;
+      z-index: 2;
+      box-shadow: inset 0 0 2px rgba(255,255,255,0.8);
+    }
+    .bubble:nth-child(odd) {
+      animation-duration: 10s;
+      width: clamp(3px, 0.8vw, 4px);
+      height: clamp(3px, 0.8vw, 4px);
+    }
+    .bubble:nth-child(3n) {
+      animation-duration: 12s;
+      width: clamp(6px, 1.5vw, 8px);
+      height: clamp(6px, 1.5vw, 8px);
+    }
+
+    @keyframes rise {
+      0% { 
+        transform: translateY(0) scale(0.8); 
+        opacity: 0.8; 
+      }
+      10% {
+        opacity: 1;
+        transform: translateY(-10%) scale(1);
+      }
+      90% {
+        opacity: 0.7;
+        transform: translateY(-100vh) scale(1.2);
+      }
+      100% { 
+        transform: translateY(-110vh) scale(1.5); 
+        opacity: 0; 
+      }
+    }
+
+    .explosion {
+      position: absolute;
+      width: clamp(50px, 12vw, 70px);
+      height: clamp(50px, 12vw, 70px);
+      background: radial-gradient(circle, rgba(255,165,0,0.8) 0%, rgba(255,69,0,0.6) 40%, transparent 70%);
+      border-radius: 50%;
+      animation: explode 0.6s ease-out;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    @keyframes explode {
+      0% { transform: scale(0.1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.8; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+
+    .level-up {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(20px, 6vw, 36px);
+  color: #FFD700;
+  font-weight: bold;
+  text-shadow: 3px 3px 6px rgba(0,0,0,1);
+  animation: levelUpAnim 2s ease-out;
+  z-index: 5;
+  pointer-events: none;
+  text-align: center;
+}
+
+    @keyframes levelUpAnim {
+      0% { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+      50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.55; }
+      100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+    }
+
+    .score-popup {
+      position: absolute;
+      font-size: clamp(16px, 4vw, 22px);
+      font-weight: bold;
+      color: #FFD700;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      animation: scorePopup 1.2s ease-out;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    @keyframes scorePopup {
+      0% { transform: translateY(0) scale(1); opacity: 1; }
+      100% { transform: translateY(-60px) scale(1.8); opacity: 0; }
+    }
+
+    .combo-popup {
+      position: absolute;
+      top: 20%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: clamp(18px, 5vw, 30px);
+      font-weight: 800;
+      color: #FF6B35;
+      text-shadow: 2px 2px 0 #fff, 0 0 12px rgba(255,107,53,0.9);
+      animation: comboPop 1s ease-out;
+      z-index: 6;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    @keyframes comboPop {
+      0% { transform: translate(-50%, -50%) scale(0.3) rotate(-8deg); opacity: 0; }
+      30% { transform: translate(-50%, -50%) scale(1.3) rotate(4deg); opacity: 1; }
+      60% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+      100% { transform: translate(-50%, -60%) scale(0.9) rotate(0deg); opacity: 0; }
+    }
+
+    .game-paused {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.4);
+      color: white;
+      padding: 20px;
+      border-radius: 15px;
+      z-index: 10;
+      text-align: left;
+      max-width: 92%;
+      max-height: 85vh; /* fallback; disesuaikan lebih presisi lewat JS ke tinggi kotak game */
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      box-sizing: border-box;
+    }
+    /* Improved mobile responsiveness */
+    @media (max-width: 480px) {
+      body {
+        padding: 8px 3px 0;
+      }
+      
+      .game-container {
+        border-radius: 8px;
+        aspect-ratio: 4 / 3;
+        --ar: 1.3333;
+      }
+      
+      .game-info-bar {
+        flex-direction: column;
+        gap: 6px;
+      }
+      
+      .game-stats {
+        justify-content: center;
+        padding-right: 0;
+      }
+
+      .game-controls {
+        top: 4px;
+        right: 4px;
+        gap: 5px;
+      }
+
+      .game-controls .pause-button {
+        width: 30px;
+        height: 30px;
+        font-size: 12px;
+      }
+      
+      .ikan {
+        min-width: 32px;
+        min-height: 32px;
+      }
+    }
+    
+    @media (max-width: 320px) {
+      body {
+        padding: 5px 2px 0;
+      }
+      
+      .game-container {
+        border-width: 2px;
+        aspect-ratio: 1 / 1;
+        --ar: 1;
+      }
+      
+      h1 {
+  font-size: clamp(18px, 4.5vw, 28px);
+  margin: 8px 0;
+  color: Black;
+  font-weight: 700;
+      }
+      
+      h2 {
+  font-size: clamp(11px, 3vw, 16px);
+  margin: 5px 0 12px 0;
+  color: #34495e;  /* <-- Ganti warna ini */
+  font-weight: 500;
+      }
+    }
+body h1 {
+  color: #FFFF00 !important;
+}
+
+body h2 {
+  color: #FFFFE0 !important;
+}
+    /* Landscape orientation on mobile */
+    @media (max-height: 500px) and (orientation: landscape) {
+      body {
+        padding: 5px;
+      }
+      
+      h1, h2 {
+        margin: 2px 0;
+      }
+      
+      .game-container {
+        aspect-ratio: 16 / 9;
+        max-width: 85vw;
+        --ar: 1.7778;
+      }
+    }
+
+    /* High DPI displays */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      .ikan {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+      }
+    }
+#start-button {
+  margin: 0 8px;
+}
+@keyframes bgWaves {
+  0% { background-position: center center; }
+  50% { background-position: center 52%; }
+  100% { background-position: center center; }
+}
+
+.game-container {
+  animation: bgWaves 8s ease-in-out infinite;
+}
+
+.golden-badge {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 20px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+ .ikan.monster-fish::after {
+    content: '💀';
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    font-size: 20px;
+    z-index: 5;
+  }
+  .ikan.monster-fish {
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.4) !important;
+    filter: drop-shadow(0 0 12px black) brightness(1.2) !important;
+    animation: monsterGlow 2s infinite alternate;
+}
+
+@keyframes monsterGlow {
+  0% { box-shadow: 0 0 20px rgba(128, 128, 128, 0.8); }
+  100% { box-shadow: 0 0 30px rgba(160, 160, 160, 1); }
+}
+
+/* Saat fullscreen, buat penuh layar */
+:fullscreen .game-paused,
+:-webkit-full-screen .game-paused {
+  width: 100vw;
+  max-width: none;
+  max-height: 100vh;
+  top: 0;
+  left: 0;
+  transform: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 40px 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+}
+
+/* ===== Mode select & mode timer ===== */
+.mode-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#mode-select {
+  padding: 6px 8px;
+  border-radius: 14px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: rgba(255,255,255,0.85);
+  color: #2c3e50;
+}
+
+#mode-timer {
+  display: none;
+  font-size: clamp(14px, 3vw, 17px);
+  color: #fff;
+  font-weight: bold;
+  background: rgba(0,0,0,0.1);
+  padding: clamp(3px, 1.2vw, 6px) clamp(6px, 2vw, 10px);
+  border-radius: 12px;
+  backdrop-filter: blur(3px);
+}
+
+/* ===== Warning stat pills (wrongClicks / missedMonsters) ===== */
+#wrong-clicks, #missed-monsters {
+  font-size: clamp(12px, 2.6vw, 15px);
+  color: #fff;
+  font-weight: bold;
+  background: rgba(0,0,0,0.15);
+  padding: clamp(3px, 1vw, 5px) clamp(5px, 1.6vw, 8px);
+  border-radius: 12px;
+  backdrop-filter: blur(3px);
+}
+#wrong-clicks.warn, #missed-monsters.warn {
+  background: rgba(231, 76, 60, 0.55);
+  animation: warnPulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes warnPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+/* ===== Screen shake saat monster meledak ===== */
+@keyframes screenShake {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 3px); }
+  40% { transform: translate(4px, -3px); }
+  60% { transform: translate(-3px, -2px); }
+  80% { transform: translate(3px, 2px); }
+  100% { transform: translate(0, 0); }
+}
+/* ===== Efek kembang api saat level selesai ===== */
+.firework-burst {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  z-index: 25;
+  pointer-events: none;
+}
+.firework-particle {
+  position: absolute;
+  width: clamp(5px, 1.4vw, 8px);
+  height: clamp(5px, 1.4vw, 8px);
+  border-radius: 50%;
+  left: 0;
+  top: 0;
+  opacity: 0;
+  animation: fireworkFly 1.1s ease-out forwards;
+  box-shadow: 0 0 8px 3px currentColor;
+}
+@keyframes fireworkFly {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+}
+.firework-spark {
+  position: absolute;
+  left: -1px;
+  top: -1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px 4px #fff, 0 0 18px 6px rgba(255,255,255,0.6);
+  animation: fireworkFlash 0.4s ease-out forwards;
+}
+@keyframes fireworkFlash {
+  0% { transform: scale(0.2); opacity: 1; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+#next-level-overlay {
+  text-align: center;
+  z-index: 10;
+  width: max-content;
+  max-width: min(88%, 340px);
+  background: linear-gradient(160deg, rgba(15, 25, 40, 0.32), rgba(10, 18, 30, 0.28));
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 24px 30px;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  /* posisi dikunci lewat top/left/transform milik .game-paused — JANGAN taruh animasi transform di sini,
+     supaya kuncian tengah (termasuk saat fullscreen) tidak pernah ketiban animasi */
+}
+#next-level-overlay .level-complete-inner {
+  animation: levelCompleteFadeIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+#next-level-overlay p {
+  margin: 0 0 10px 0;
+  font-size: clamp(12px, 3vw, 15px);
+  font-weight: 300;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.85);
+}
+#next-level-overlay h3 {
+  font-size: clamp(17px, 4.2vw, 25px);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #FFD700;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.6);
+  margin: 0 0 10px 0;
+}
+@keyframes levelCompleteFadeIn {
+  0% { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+/* Di mode fullscreen, .game-paused biasanya dibuat penuh layar (untuk menu pause/keluar yang isinya panjang).
+   Untuk popup "Level Selesai" yang ringkas ini, override supaya tetap terkunci pas di tengah layar. */
+:fullscreen #next-level-overlay,
+:-webkit-full-screen #next-level-overlay {
+  width: max-content;
+  height: auto;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  justify-content: center;
+}
+#next-level-button {
+  padding: 11px 26px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border: none;
+  border-radius: 24px;
+  cursor: pointer;
+  touch-action: manipulation;
+  margin-top: 8px;
+  background: linear-gradient(135deg, #FFD700, #FF8C00);
+  color: #2c3e50;
+  box-shadow: 0 4px 18px rgba(255, 165, 0, 0.5);
+  animation: nextLevelPulse 1.6s ease-in-out infinite;
+}
+@keyframes nextLevelPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.game-container.shake {
+  animation: bgWaves 8s ease-in-out infinite, screenShake 0.35s ease-in-out;
+}
+
+/* ===== Sirip/ekor ikan: goyangan halus agar terlihat "hidup" ===== */
+@keyframes finWiggle {
+  0%   { transform: rotate(0deg); }
+  25%  { transform: rotate(2.5deg); }
+  50%  { transform: rotate(0deg); }
+  75%  { transform: rotate(-2.5deg); }
+  100% { transform: rotate(0deg); }
+}
+.ikan .fin-wrap {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: finWiggle 1.1s ease-in-out infinite;
+  transform-origin: 65% 50%;
+  display: block;
+}
+.ikan.monster-fish .fin-wrap {
+  animation-duration: 1.6s;
+}
+
+/* ===== Power-up ===== */
+.power-up {
+  position: absolute;
+  width: clamp(34px, 8vw, 46px);
+  height: clamp(34px, 8vw, 46px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(18px, 4.5vw, 24px);
+  cursor: pointer;
+  z-index: 7;
+  animation: powerUpFloat 1.6s ease-in-out infinite alternate, powerUpFade 8s linear forwards;
+  touch-action: manipulation;
+}
+.power-up.freeze { background: radial-gradient(circle, #aeefff 0%, #4fc3f7 70%); box-shadow: 0 0 18px rgba(79,195,247,0.9); }
+.power-up.magnet { background: radial-gradient(circle, #ffd9a0 0%, #e67e22 70%); box-shadow: 0 0 18px rgba(230,126,34,0.9); }
+.power-up.multiplier { background: radial-gradient(circle, #f7ffb0 0%, #f1c40f 70%); box-shadow: 0 0 18px rgba(241,196,15,0.9); }
+
+@keyframes powerUpFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
+}
+@keyframes powerUpFade {
+  0%, 85% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.active-powerups {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  z-index: 55;
+  pointer-events: none;
+}
+.active-powerup-badge {
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
+  backdrop-filter: blur(3px);
+  white-space: nowrap;
+}
+
+.ikan.frozen-fx {
+  filter: drop-shadow(0 0 8px #4fc3f7) brightness(1.1) saturate(0.6) !important;
+}
+
+</style>
+</head>
+<body>
+   <h1>FISHED GAME</h1>
+<h2>Tangkap ikan sampai muncul Ikan MONSTER lalu ledakkan!</h2>
+ 
+  
+  <div class="game-container" id="gameContainer">
+<div class="game-info-bar" id="gameInfoBar" style="display: flex;">
+  <div class="game-stats">
+    <span id="score">💎 0</span>
+    <span id="level">🚀 1</span>
+    <span id="target">🎯 250</span>
+    <span id="high-score">🏆 0</span>
+    <span id="mode-timer">⏱️ 60</span>
+    <span id="wrong-clicks">❌ 0/15</span>
+    <span id="missed-monsters">👹 0/5</span>
+  </div>
+  <div class="game-controls">
+    <button class="pause-button" id="pause-button">⏸️</button>
+    <button class="pause-button" id="exit-button" title="Keluar">🚪</button>
+  </div>
+</div>
+    <div class="water-rays"></div>
+    <div class="active-powerups" id="activePowerups"></div>
+    <div class="basket" id="basket">🧺</div>
+  </div>
+
+<!-- Volume Control -->
+<div class="volume-control">
+  <span class="volume-label">🔉</span>
+  <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="20">
+  <span id="volume-display" class="volume-label">20%</span>
+  <button id="sfx-toggle" class="sound-control" title="Suara Efek">🔊</button>
+  <button id="music-toggle" class="sound-control" title="Musik Latar">🎵</button>
+  <div class="mode-select-wrap">
+    <select id="mode-select" title="Mode Permainan">
+      <option value="classic">🐟 Klasik</option>
+      <option value="timeAttack">⏱️ Time Attack</option>
+      <option value="zen">🧘 Zen</option>
+      <option value="survival">🔥 Survival</option>
+    </select>
+  </div>
+	<button id="start-button">🐟 Mulai</button>
+	<button id="fullscreen-button">⛶ Layar Penuh</button>
+</div>
+<h2>@MUHAMMAD IHSAN ALAUDDIN 2025</h2>
+<!-- Audio Elements -->
+
+    <script>
+    const ikanImages = [
+  'https://i.imgur.com/HFPqLAQ.png',  // 1
+  'https://i.imgur.com/7ga23L8.png',  // 2
+  'https://i.imgur.com/pJYqFhH.png',  // 3
+  'https://i.imgur.com/mhcjHno.png',  // 4
+  'https://i.imgur.com/BB6pOeD.png',  // 5
+  'https://i.imgur.com/4xHFblP.png',  // 6
+  'https://i.imgur.com/SKkKrye.png',  // 7
+  'https://i.imgur.com/CMXZIRh.png',  // 8
+  'https://i.imgur.com/4cPpCa7.png',  // 9
+  'https://i.imgur.com/pWhyT0h.png',  // 1
+  'https://i.imgur.com/MjkED8g.png',  // 3
+  'https://i.imgur.com/PODOZYo.png',  // 4
+  'https://i.imgur.com/9CiblKv.png'   // 5
+];
+
+    const rareImages = [
+  'https://i.imgur.com/cm2qJRF.png',  // Ikan langka lama
+  'https://i.imgur.com/jcuH20O.png',  // Ikan langka baru 1
+  'https://i.imgur.com/hN6sDgY.png',  // Ikan langka baru 2
+  'https://i.imgur.com/Ba9XcFh.png'   // Ikan langka baru 3
+];
+
+const monsterImages = [
+  'https://i.imgur.com/pGJukHX.png',  // Ikan monster lama
+  'https://i.imgur.com/IPTNmDJ.png',  // Ikan monster baru 1
+  'https://i.imgur.com/PNNwT2u.png',  // Ikan monster baru 2
+  'https://i.imgur.com/HPAFp4Y.png'   // Ikan monster baru 3
+];
+
+const goldenImages = [
+  'https://i.imgur.com/XFyWgpS.png',   // khusus golden
+  'https://i.imgur.com/4cPpCa7.png',   // tambahkan yang unik
+  'https://i.imgur.com/MjkED8g.png'    // tidak digunakan di rare
+];
+
+    const gameContainer = document.getElementById('gameContainer');
+    const gameInfoBar = document.getElementById('gameInfoBar');
+    const startButton = document.getElementById('start-button');
+    const pauseButton = document.getElementById('pause-button');
+    const soundButton = document.getElementById('sound-control');
+    const scoreDisplay = document.getElementById('score');
+    const levelDisplay = document.getElementById('level'); 
+    const targetDisplay = document.getElementById('target');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeDisplay = document.getElementById('volume-display');
+    const wrongClicksDisplay = document.getElementById('wrong-clicks');
+    const missedMonstersDisplay = document.getElementById('missed-monsters');
+    const modeSelect = document.getElementById('mode-select');
+    const modeTimerDisplay = document.getElementById('mode-timer');
+    const sfxToggleButton = document.getElementById('sfx-toggle');
+    const musicToggleButton = document.getElementById('music-toggle');
+    const basketEl = document.getElementById('basket');
+    const activePowerupsEl = document.getElementById('activePowerups');
+
+    let score = 0;
+    let level = 1;
+    let target = 1200;
+    let gameStarted = false;
+    let gamePaused = false;
+    let soundEnabled = true;
+    let removedIkanIndexes = [];
+    let ikanList = [];
+    let fishSpeeds = { 1: 2700, 4: 2100, 7: 1500, 10: 1000 };
+    let gameIntervals = [];
+    let currentVolume = 0.2;
+    let audioContext = null;
+    let missedMonsters = 0;
+    let wrongClicks = 0;
+    let consecutiveMiss = 0;
+    let comboCount = 0;
+    // ===== Level-complete (tunggu ikan habis) =====
+    let levelCompletePending = false; // true saat target tercapai, menunggu semua ikan habis
+    // ===== Reset salah klik via ledakan monster =====
+    let monstersExplodedCount = 0; // jumlah monster meledak sejak reset terakhir
+    let highScore = localStorage.getItem("fishedHighScore") || 0;
+    console.log("👑 Skor Tertinggi Sebelumnya:", highScore);
+
+    // ===== Mode permainan =====
+    let gameMode = 'classic'; // classic | timeAttack | zen | survival
+    let modeTimeLeft = 60;
+    let modeTimerInterval = null;
+    let survivalStartTime = 0;
+
+    // ===== Musik latar (terpisah dari SFX) =====
+    let musicEnabled = true;
+
+    // ===== Power-up =====
+    let scoreMultiplier = 1;
+    let multiplierTimeout = null;
+    let magnetInterval = null;
+    let magnetTimeout = null;
+    let freezeActive = false;
+    let freezeTimeout = null;
+    const activePowerupBadges = {}; // type -> element
+
+function ensureAudioContext() {
+  if (!audioContext) {
+    initAudio();
+  }
+}
+
+function updateHighScore() {
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("fishedHighScore", highScore);
+  }
+}
+	// Fungsi untuk inisialisasi audio
+	function initAudio() {
+	  try {
+	    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+	    if (audioContext.state === 'suspended') {
+	      audioContext.resume();
+	    }
+	  } catch (error) {
+	    console.log('AudioContext initialization failed:', error);
+	  }
+	}
+
+    // Enhanced fish points system
+    const fishPoints = {
+  group1: 5,
+  group2: 10,
+  group3: 15,
+  group4: 20,
+  group5: 25,
+  rare: 30,
+  monster: 50,
+  golden: 40,
+};
+
+    // Touch event optimization
+    let touchStartTime = 0;
+    let touchMoved = false;
+
+       // DEFINISI SEMUA FUNGSI TERLEBIH DAHULU
+    
+function playSplashSound(pitchGroup = 1) {
+  if (!soundEnabled) return;
+
+  try {
+    // Coba gunakan Web Audio API dulu
+   if (!audioContext) {
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+}
+    
+    // Resume audio context jika suspended
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+    
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Tetapkan frekuensi berdasarkan grup
+    let baseFreq = 100;
+    if (pitchGroup === 1) baseFreq = 500;     // ikan besar
+  else if (pitchGroup === 2) baseFreq = 700;  // ikan sedang
+  else if (pitchGroup === 3) baseFreq = 900;  // ikan kecil
+  else if (pitchGroup === 4) baseFreq = 1000; // frekuensi tinggi 1
+  else if (pitchGroup === 5) baseFreq = 1200; // frekuensi tinggi 2
+
+    oscillator.frequency.setValueAtTime(baseFreq, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(baseFreq / 2, audioContext.currentTime + 0.1);
+
+    gainNode.gain.setValueAtTime(currentVolume, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.1);
+
+    // Lapisan tekstur "percikan air" nyata memakai noise ber-filter, bukan cuma nada murni
+    playNoiseBurst({ duration: 0.18, filterType: 'bandpass', filterFreq: baseFreq * 1.8, filterQ: 0.8, gainPeak: 0.35, decay: 0.15 });
+    
+  } catch (error) {
+    console.log('Web Audio error, using fallback:', error);
+    // Fallback ke HTML5 audio
+    playFallbackSound();
+  }
+}
+
+// ===== Util SFX "nyata": semburan noise ber-filter untuk percikan air & ledakan =====
+function getNoiseBuffer(durationSec = 0.3) {
+  if (!audioContext) return null;
+  const bufferSize = Math.max(1, Math.floor(audioContext.sampleRate * durationSec));
+  const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  return buffer;
+}
+
+function playNoiseBurst({ duration = 0.3, filterType = 'bandpass', filterFreq = 1200, filterQ = 1, gainPeak = 0.4, decay = 0.3 } = {}) {
+  if (!soundEnabled || !audioContext) return;
+  const buffer = getNoiseBuffer(duration);
+  if (!buffer) return;
+
+  const noise = audioContext.createBufferSource();
+  noise.buffer = buffer;
+
+  const filter = audioContext.createBiquadFilter();
+  filter.type = filterType;
+  filter.frequency.setValueAtTime(filterFreq, audioContext.currentTime);
+  filter.Q.value = filterQ;
+
+  const gain = audioContext.createGain();
+  gain.gain.setValueAtTime(gainPeak * currentVolume, audioContext.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + decay);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(audioContext.destination);
+
+  noise.start();
+  noise.stop(audioContext.currentTime + duration);
+}
+
+// Tambah fungsi fallback baru
+function playFallbackSound() {
+  try {
+    const audio = new Audio();
+    audio.volume = currentVolume;
+    audio.src = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDuY4/TPeygFJHzJ8N2QQQ";
+    audio.onerror = () => {
+      console.warn("Fallback audio gagal dimuat.");
+    };
+    audio.play().catch(e => console.log('Fallback audio failed:', e));
+  } catch (e) {
+    console.log('All audio methods failed:', e);
+  }
+}
+
+    function updateDisplay() {
+      scoreDisplay.textContent = `💎 ${score}`;
+      levelDisplay.textContent = `🚀  ${level}`;
+      targetDisplay.textContent = `🎯 ${target}`;
+      document.getElementById("high-score").textContent = `🏆 ${highScore}`;
+
+      if (wrongClicksDisplay) {
+        wrongClicksDisplay.textContent = `❌ ${wrongClicks}/15`;
+        wrongClicksDisplay.classList.toggle('warn', wrongClicks >= 10);
+      }
+      if (missedMonstersDisplay) {
+        missedMonstersDisplay.textContent = `👹 ${missedMonsters}/5`;
+        missedMonstersDisplay.classList.toggle('warn', missedMonsters >= 3);
+      }
+
+      // Sembunyikan indikator target & level saat mode Survival (tanpa target level)
+      // dan sembunyikan indikator monster terlepas saat mode Zen (tanpa monster)
+      if (targetDisplay) targetDisplay.style.display = (gameMode === 'survival') ? 'none' : '';
+      if (levelDisplay) levelDisplay.style.display = (gameMode === 'survival') ? 'none' : '';
+      if (missedMonstersDisplay) missedMonstersDisplay.style.display = (gameMode === 'zen') ? 'none' : '';
+    }
+
+    function getCurrentSpeed() {
+      if (level >= 10) return fishSpeeds[10];
+      if (level >= 7) return fishSpeeds[7];
+      if (level >= 4) return fishSpeeds[4];
+      return fishSpeeds[1];
+    }
+
+    function moveIkan(ikan) {
+  if (!ikan.parentNode) return;
+
+  const w = parseInt(ikan.style.width);
+  const h = parseInt(ikan.style.height);
+  const containerHeight = gameContainer.offsetHeight - h;
+  const containerWidth = gameContainer.offsetWidth - w;
+
+  let attempts = 0;
+  let randomTop, randomLeft;
+  let tooClose = true;
+
+  while (tooClose && attempts < 10) {
+    randomTop = Math.floor(Math.random() * containerHeight);
+    randomLeft = Math.floor(Math.random() * containerWidth);
+    tooClose = false;
+
+    for (let other of ikanList) {
+      if (other === ikan || !other.parentNode) continue;
+
+      const dx = parseInt(other.style.left) - randomLeft;
+      const dy = parseInt(other.style.top) - randomTop;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distance < Math.max(w, h)) {
+        tooClose = true;
+        break;
+      }
+    }
+    attempts++;
+  }
+
+  const lastLeft = parseInt(ikan.dataset.lastLeft) || 0;
+  ikan.style.transform = (randomLeft > lastLeft) ? 'scaleX(-1)' : 'scaleX(1)';
+  ikan.dataset.lastLeft = randomLeft;
+
+  ikan.style.top = `${randomTop}px`;
+  ikan.style.left = `${randomLeft}px`;
+}
+
+
+    function scheduleIkanMove(ikan) {
+  if (!ikan.parentNode) return;
+ ikan.dataset.manualMove = "1";
+  const moveLoop = () => {
+    if (!ikan.parentNode) return;
+
+    // Saat game dijeda, ikan sedang ditangkap (di keranjang), atau efek pembeku waktu aktif,
+    // cek lagi sebentar kemudian alih-alih mematikan loop selamanya.
+    if (gamePaused || freezeActive || ikan.dataset.caught === '1') {
+      setTimeout(moveLoop, 350);
+      return;
+    }
+
+    moveIkan(ikan);
+
+    const baseSpeed = getCurrentSpeed();
+    const randomOffset = Math.random() * 1000; // variasi hingga 1 detik
+    let nextMoveIn = baseSpeed + randomOffset;
+
+    // Monster pola "speedup": makin cepat kalau dibiarkan makin lama
+    const speedBoost = parseFloat(ikan.dataset.speedBoost) || 0;
+    if (speedBoost > 0) nextMoveIn *= (1 - speedBoost * 0.5);
+
+    // Mode Survival: kecepatan ikan terus meningkat seiring waktu
+    if (gameMode === 'survival' && survivalStartTime) {
+      const elapsedSec = (Date.now() - survivalStartTime) / 1000;
+      const survivalFactor = Math.max(0.35, 1 - elapsedSec / 240); // hingga -65% dalam 4 menit
+      nextMoveIn *= survivalFactor;
+    }
+
+    setTimeout(moveLoop, Math.max(200, nextMoveIn));
+  };
+
+  // Delay awal random agar tidak bergerak serentak
+  const initialDelay = Math.random() * 1000;
+  setTimeout(moveLoop, initialDelay);
+}
+
+    // Pergerakan zigzag untuk monster berpola "zigzag": langkah cepat & berselang-seling
+    function scheduleZigzagMove(ikan) {
+      if (!ikan.parentNode) return;
+      ikan.dataset.manualMove = "1";
+      let dir = Math.random() < 0.5 ? 1 : -1;
+
+      const moveLoop = () => {
+        if (!ikan.parentNode) return;
+        if (gamePaused || freezeActive || ikan.dataset.caught === '1') {
+          setTimeout(moveLoop, 300);
+          return;
+        }
+
+        const w = parseInt(ikan.style.width) || 40;
+        const h = parseInt(ikan.style.height) || 40;
+        const containerWidth = gameContainer.offsetWidth - w;
+        const containerHeight = gameContainer.offsetHeight - h;
+        const curLeft = parseInt(ikan.style.left) || 0;
+        const curTop = parseInt(ikan.style.top) || 0;
+
+        const step = Math.max(30, containerWidth * 0.12);
+        let newLeft = curLeft + dir * step;
+        if (newLeft < 0 || newLeft > containerWidth) {
+          dir *= -1;
+          newLeft = Math.max(0, Math.min(containerWidth, curLeft + dir * step));
+        }
+        const newTop = Math.max(0, Math.min(containerHeight, curTop + (Math.random() * 70 - 35)));
+
+        ikan.style.transform = (newLeft > curLeft) ? 'scaleX(-1)' : 'scaleX(1)';
+        ikan.dataset.lastLeft = newLeft;
+        ikan.style.left = `${newLeft}px`;
+        ikan.style.top = `${newTop}px`;
+
+        const speedBoost = parseFloat(ikan.dataset.speedBoost) || 0;
+        const nextMove = 420 * (1 - speedBoost * 0.4);
+        setTimeout(moveLoop, Math.max(180, nextMove));
+      };
+
+      setTimeout(moveLoop, Math.random() * 500);
+    }
+
+    function createExplosion(element) {
+      const explosion = document.createElement('div');
+      explosion.className = 'explosion';
+
+      const rect = element.getBoundingClientRect();
+      const containerRect = gameContainer.getBoundingClientRect();
+
+      explosion.style.left = `${rect.left - containerRect.left + rect.width / 2 - 50}px`;
+      explosion.style.top = `${rect.top - containerRect.top + rect.height / 2 - 50}px`;
+
+      gameContainer.appendChild(explosion);
+      shakeScreen();
+
+      setTimeout(() => {
+        if (explosion.parentNode) {
+          explosion.remove();
+        }
+      }, 500);
+    }
+
+    // Getaran layar ringan saat monster meledak
+    function shakeScreen() {
+      gameContainer.classList.add('shake');
+      setTimeout(() => gameContainer.classList.remove('shake'), 350);
+    }
+
+    // Menyeret ikan yang tertangkap ke arah keranjang di pojok kiri bawah
+    function dragToBasket(ikan, onComplete) {
+      if (!basketEl || !ikan.parentNode) { if (onComplete) onComplete(); return; }
+      const containerRect = gameContainer.getBoundingClientRect();
+      const basketRect = basketEl.getBoundingClientRect();
+      const w = parseInt(ikan.style.width) || 40;
+      const h = parseInt(ikan.style.height) || 40;
+
+      const targetLeft = Math.max(0, basketRect.left - containerRect.left + basketRect.width / 2 - w / 2);
+      const targetTop = Math.max(0, basketRect.top - containerRect.top + basketRect.height / 2 - h / 2);
+
+      ikan.style.transition = 'left 0.55s cubic-bezier(.55,0,.85,.35), top 0.55s cubic-bezier(.55,0,.85,.35), transform 0.55s ease-in, opacity 0.55s ease-in';
+      ikan.style.left = `${targetLeft}px`;
+      ikan.style.top = `${targetTop}px`;
+      ikan.style.transform = 'scale(0.15) rotate(20deg)';
+      ikan.style.opacity = '0.25';
+
+      setTimeout(() => {
+        basketEl.classList.add('basket-bump');
+        setTimeout(() => basketEl.classList.remove('basket-bump'), 200);
+        ikan.style.transition = '';
+        if (onComplete) onComplete();
+      }, 560);
+    }
+
+    function registerCombo() {
+      comboCount++;
+      let bonus = 0;
+      if (comboCount >= 3) {
+        bonus = Math.min(comboCount, 15) * 2;
+        if (comboCount % 3 === 0) {
+          showComboEffect(comboCount);
+        }
+      }
+      return bonus;
+    }
+
+    function showComboEffect(count) {
+      const comboDiv = document.createElement('div');
+      comboDiv.className = 'combo-popup';
+      comboDiv.textContent = `🔥 COMBO x${count}!`;
+      gameContainer.appendChild(comboDiv);
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(30);
+      }
+
+      setTimeout(() => {
+        if (comboDiv.parentNode) comboDiv.remove();
+      }, 1000);
+    }
+
+    function showScorePopup(ikan, points) {
+      const popup = document.createElement('div');
+      popup.className = 'score-popup';
+      popup.textContent = `+${points}`;
+
+      const rect = ikan.getBoundingClientRect();
+      const containerRect = gameContainer.getBoundingClientRect();
+
+      popup.style.left = `${rect.left - containerRect.left + rect.width / 2}px`;
+      popup.style.top = `${rect.top - containerRect.top}px`;
+
+      gameContainer.appendChild(popup);
+
+      setTimeout(() => {
+        if (popup.parentNode) {
+          popup.remove();
+        }
+      }, 1000);
+    }
+
+    function handleMonsterClick(monster) {
+      if (gamePaused) return;
+      let clickCount = parseInt(monster.dataset.clickCount) || 0;
+      clickCount++;
+      monster.dataset.clickCount = clickCount;
+
+	let pitchGroup = 2; // default grup sedang
+	const index = parseInt(monster.dataset.index || 0);
+
+	if ([0,1,7].includes(index)) pitchGroup = 1;   // besar
+	else if ([3,4,8].includes(index)) pitchGroup = 3; // kecil
+
+	playSplashSound(pitchGroup);
+
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50);
+      }
+
+      const pattern = monster.dataset.pattern || 'normal';
+      const isSplitChild = monster.dataset.isSplitChild === '1';
+      const hitsNeeded = parseInt(monster.dataset.hitsNeeded) || 5;
+
+      // Monster kecil berpola "splitter": begitu kena pukulan pertama, langsung pecah jadi dua
+      if (pattern === 'splitter' && !isSplitChild && clickCount === 1) {
+        const bonus = Math.round(8 * scoreMultiplier);
+        showScorePopup(monster, bonus);
+        score += bonus;
+        updateDisplay();
+
+        const rect = monster.getBoundingClientRect();
+        const containerRect = gameContainer.getBoundingClientRect();
+        const baseLeft = rect.left - containerRect.left;
+        const baseTop = rect.top - containerRect.top;
+
+        monster.remove();
+        ikanList = ikanList.filter(f => f !== monster);
+
+        spawnMonsterFish('splitter', { isSplitChild: true, left: Math.max(0, baseLeft - 24), top: Math.max(0, baseTop) });
+        spawnMonsterFish('splitter', { isSplitChild: true, left: Math.max(0, baseLeft + 24), top: Math.max(0, baseTop + 12) });
+        return;
+      }
+
+      if (clickCount === 1) {
+        monster.style.opacity = '0.7';
+        const pts = Math.round(10 * scoreMultiplier);
+        showScorePopup(monster, pts);
+        score += pts;
+      } else if (clickCount === 2 && hitsNeeded > 2) {
+        monster.style.filter = 'grayscale(80%)';
+        const pts = Math.round(15 * scoreMultiplier);
+        showScorePopup(monster, pts);
+        score += pts;
+      } else if (clickCount >= hitsNeeded) {
+        createExplosion(monster);
+        const comboBonus = registerCombo();
+        const basePts = isSplitChild ? 20 : 25;
+        const pts = Math.round((basePts + comboBonus) * scoreMultiplier);
+        showScorePopup(monster, pts);
+	playMonsterExplodeSound();
+        score += pts;
+
+        // Reset salah klik setelah meledakkan cukup banyak monster.
+        // Level 1 butuh 2 ledakan, level 2 butuh 3, dst (level + 1).
+        monstersExplodedCount++;
+        const resetThreshold = level + 1;
+        if (monstersExplodedCount >= resetThreshold) {
+          wrongClicks = 0;
+          monstersExplodedCount = 0;
+        }
+
+        updateDisplay();
+        checkLevelUp();
+
+        monster.remove();
+        ikanList = ikanList.filter(f => f !== monster);
+        return;
+      }
+      
+      updateDisplay();
+    }
+
+    function getFishType(index) {
+  if ([0, 1].includes(index)) return 'group1';        // pitchGroup 1 (ikan besar)
+  if ([2, 3].includes(index)) return 'group2';        // pitchGroup 2 (sedang)
+  if ([4, 5].includes(index)) return 'group3';        // pitchGroup 3 (kecil)
+  if ([6, 7].includes(index)) return 'group4';        // pitchGroup 4 (belum digunakan)
+  if ([8, 9].includes(index)) return 'group5';        // pitchGroup 5 (belum digunakan)
+  return 'group2';
+}
+
+    function catchFish(ikan) {
+  if (gamePaused) return;
+
+  if (ikan.dataset.fishType === 'monster') {
+    handleMonsterClick(ikan);
+    return;
+  }
+
+  let fishType = ikan.dataset.fishType;
+  let pitchGroup = 2;
+
+  if (fishType === 'group1') pitchGroup = 1;
+  else if (fishType === 'group2') pitchGroup = 2;
+  else if (fishType === 'group3') pitchGroup = 3;
+  else if (fishType === 'group4') pitchGroup = 4;
+  else if (fishType === 'group5') pitchGroup = 5;
+
+  playSplashSound(pitchGroup);
+
+  let points = fishPoints[fishType] || fishPoints.group2;
+  points += registerCombo();
+  points = Math.round(points * scoreMultiplier);
+
+  showScorePopup(ikan, points);
+  score += points;
+  updateDisplay();
+  checkLevelUp();
+
+  ikan.style.pointerEvents = 'none';
+  ikan.dataset.caught = '1';
+
+  // Jika ikan ini kebetulan sudah ikut meledak (mis. tepat saat level baru saja terpenuhi
+  // dan seluruh ikan yang tersisa langsung diledakkan), tidak perlu animasi ke keranjang lagi.
+  if (!ikan.parentNode) return;
+
+  // Efek: ikan yang tertangkap terseret masuk ke keranjang di pojok kiri bawah
+  dragToBasket(ikan, () => {
+    if (['rare', 'golden'].includes(fishType)) {
+      ikan.remove();
+      ikanList = ikanList.filter(f => f !== ikan);
+    } else {
+      // Ikan "istirahat" sejenak di keranjang sebelum muncul lagi di lokasi baru
+      setTimeout(() => {
+        if (ikan.parentNode) {
+          ikan.style.transition = 'none';
+          ikan.style.opacity = '0';
+          ikan.dataset.caught = '0';
+          moveIkan(ikan);
+          requestAnimationFrame(() => {
+            ikan.style.transition = '';
+            ikan.style.opacity = '1';
+            ikan.style.pointerEvents = 'auto';
+          });
+        }
+      }, 2200);
+    }
+  });
+}
+  
+// Volume control
+volumeSlider.addEventListener('input', function() {
+  currentVolume = this.value / 100;
+  volumeDisplay.textContent = `${this.value}%`;
+  
+  // Test sound saat mengatur volume
+  if (currentVolume > 0 && gameStarted) {
+    playSplashSound(2);
+  }
+});
+
+    function addTouchEvents(ikan) {
+  // Simplified event handling
+  ikan.addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  ensureAudioContext(); // Gunakan fungsi yang sudah diperbaiki
+  catchFish(ikan);
+});
+
+      // Touch events for mobile
+      ikan.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        catchFish(ikan);
+      });
+    }
+
+function checkMonsterCollision(monster) {
+  ikanList.forEach(fish => {
+    if (
+      fish.dataset.fishType?.startsWith('group') &&
+      fish !== monster &&
+      fish.parentNode
+    ) {
+      const mRect = monster.getBoundingClientRect();
+      const fRect = fish.getBoundingClientRect();
+
+      const overlap = !(
+        mRect.right < fRect.left ||
+        mRect.left > fRect.right ||
+        mRect.bottom < fRect.top ||
+        mRect.top > fRect.bottom
+      );
+
+      if (overlap) {
+        fish.classList.add("red-flash");
+        fish.style.animationPlayState = 'paused';
+        monster.style.animationPlayState = 'paused';
+
+        setTimeout(() => {
+           if (fish.parentNode) {
+    removedIkanIndexes.push(parseInt(fish.dataset.index));
+    fish.remove();
+    ikanList = ikanList.filter(f => f !== fish);
+    afterFishRemoved();
+          }
+          monster.style.animationPlayState = 'running';
+        }, 1500);
+
+        setTimeout(() => {
+          fish.classList.remove("red-flash");
+        }, 1000);
+      }
+    }
+  });
+}
+
+// Menambahkan lapisan gambar ikan (fin-wrap) yang beranimasi goyang sirip/ekor,
+// terpisah dari elemen .ikan induk agar flip arah & efek lain tetap jalan normal.
+function addFinWrap(ikanEl, imageUrl) {
+  const finWrap = document.createElement('div');
+  finWrap.className = 'fin-wrap';
+  finWrap.style.backgroundImage = `url('${imageUrl}')`;
+  ikanEl.appendChild(finWrap);
+  return finWrap;
+}
+
+    // pattern: 'normal' | 'zigzag' | 'splitter' | 'speedup' (acak jika tidak ditentukan)
+    // opts: { isSplitChild, left, top } — dipakai saat monster "splitter" pecah jadi dua
+    function spawnMonsterFish(pattern, opts = {}) {
+  if (levelCompletePending && !opts.isSplitChild) return null; // jangan spawn monster baru saat menunggu ikan habis
+  const monster = document.createElement('div');
+  monster.className = 'ikan monster-fish';
+  const randomMonsterImage = monsterImages[Math.floor(Math.random() * monsterImages.length)];
+  addFinWrap(monster, randomMonsterImage);
+
+  const patterns = ['normal', 'zigzag', 'splitter', 'speedup'];
+  if (!pattern) pattern = patterns[Math.floor(Math.random() * patterns.length)];
+  monster.dataset.pattern = pattern;
+
+  const isSplitChild = !!opts.isSplitChild;
+  monster.dataset.isSplitChild = isSplitChild ? '1' : '0';
+
+  let sizeFactor = 0.09;
+  let hitsNeeded = 5;
+  if (pattern === 'splitter' && !isSplitChild) {
+    sizeFactor = 0.075; // monster kecil sebelum pecah
+    hitsNeeded = 1; // pecah begitu kena 1 pukulan (ditangani khusus di handleMonsterClick)
+  } else if (isSplitChild) {
+    sizeFactor = 0.055; // pecahan hasil split, lebih kecil
+    hitsNeeded = 2;
+  }
+
+  let size = Math.max(isSplitChild ? 36 : 55, gameContainer.offsetWidth * sizeFactor);
+  monster.style.width = `${size}px`;
+  monster.style.height = `${size}px`;
+  monster.dataset.fishType = 'monster';
+  monster.dataset.clickCount = 0;
+  monster.dataset.lastLeft = 0;
+  monster.dataset.hitsNeeded = hitsNeeded;
+  monster.dataset.spawnTime = Date.now();
+
+  gameContainer.appendChild(monster);
+  ikanList.push(monster);
+
+  addTouchEvents(monster);
+
+  if (opts.left !== undefined && opts.top !== undefined) {
+    monster.style.left = `${opts.left}px`;
+    monster.style.top = `${opts.top}px`;
+  } else {
+    moveIkan(monster);
+  }
+
+  if (pattern === 'zigzag') {
+    scheduleZigzagMove(monster);
+  } else {
+    scheduleIkanMove(monster);
+  }
+
+  // Monster berpola "speedup": makin lama dibiarkan, makin cepat geraknya
+  let speedupInterval = null;
+  if (pattern === 'speedup') {
+    speedupInterval = setInterval(() => {
+      if (!monster.parentNode) { clearInterval(speedupInterval); return; }
+      const age = Date.now() - parseInt(monster.dataset.spawnTime);
+      monster.dataset.speedBoost = Math.min(0.75, age / 12000);
+    }, 1000);
+    gameIntervals.push(speedupInterval);
+  }
+
+  // Cek tabrakan monster tiap detik
+  const monsterCheck = setInterval(() => {
+    if (!gameStarted || !monster.parentNode) {
+      clearInterval(monsterCheck);
+      return;
+    }
+    checkMonsterCollision(monster);
+  }, 1000);
+  gameIntervals.push(monsterCheck);
+
+  // Auto-remove jika monster tidak ditangkap dalam waktu tertentu
+  const lifeMs = isSplitChild ? 9000 : 12000;
+  setTimeout(() => {
+    if (monster.parentNode) {
+      monster.remove();
+      ikanList = ikanList.filter(f => f !== monster);
+      if (speedupInterval) clearInterval(speedupInterval);
+      missedMonsters++;
+      console.log("Missed Monster:", missedMonsters);
+      updateDisplay();
+      afterFishRemoved();
+      if (gameMode !== 'zen' && missedMonsters >= 5) {
+        gameOver("Monster kabur terlalu sering!");
+      }
+    }
+  }, lifeMs);
+
+  return monster;
+}
+
+    function spawnRareFish() {
+      if (levelCompletePending) return; // jangan spawn ikan baru saat menunggu ikan habis
+      const rareFish = document.createElement('div');
+      rareFish.className = 'ikan rare-fish';
+      const randomRareImage = rareImages[Math.floor(Math.random() * rareImages.length)];
+      addFinWrap(rareFish, randomRareImage);
+      
+      let size = Math.max(40, gameContainer.offsetWidth * 0.05);
+      rareFish.style.width = `${size}px`;
+      rareFish.style.height = `${size}px`;
+      rareFish.dataset.fishType = 'rare';
+      rareFish.dataset.lastLeft = 0;
+      
+      gameContainer.appendChild(rareFish);
+      ikanList.push(rareFish);
+      
+      addTouchEvents(rareFish);
+      moveIkan(rareFish);
+      scheduleIkanMove(rareFish);
+
+      // Auto-remove after 8 seconds
+      setTimeout(() => {
+        if (rareFish.parentNode) {
+          rareFish.remove();
+          ikanList = ikanList.filter(f => f !== rareFish);
+          afterFishRemoved();
+        }
+      }, 8000);
+    }
+
+
+function spawnGoldenFish() {
+  if (levelCompletePending) return; // jangan spawn ikan baru saat menunggu ikan habis
+  const goldenFish = document.createElement('div');
+  goldenFish.className = 'ikan golden-fish';
+  
+  // Pilih gambar random dari array goldenImages
+  const randomGoldenImage = goldenImages[Math.floor(Math.random() * goldenImages.length)];
+  addFinWrap(goldenFish, randomGoldenImage);
+  
+  let size = Math.max(45, gameContainer.offsetWidth * 0.075);
+  goldenFish.style.width = `${size}px`;
+  goldenFish.style.height = `${size}px`;
+  goldenFish.dataset.fishType = 'golden';
+  goldenFish.dataset.lastLeft = 0;
+  
+  gameContainer.appendChild(goldenFish);
+  ikanList.push(goldenFish);
+  
+// Tambah badge "💰"
+const badge = document.createElement('div');
+badge.textContent = '💰';
+badge.className = 'golden-badge';
+goldenFish.appendChild(badge);
+
+
+  addTouchEvents(goldenFish);
+  moveIkan(goldenFish);
+  scheduleIkanMove(goldenFish);
+}
+
+// ================= POWER-UP SYSTEM =================
+// Sesekali muncul: ❄️ pembeku waktu, 🧲 magnet, ✨ pengganda skor.
+// Menambah variasi keputusan (mau dikejar dulu atau fokus ikan) selain spam klik.
+
+function spawnPowerUp() {
+  if (!gameStarted || gamePaused) return;
+  const types = ['freeze', 'magnet', 'multiplier'];
+  const type = types[Math.floor(Math.random() * types.length)];
+  const icons = { freeze: '❄️', magnet: '🧲', multiplier: '✨' };
+
+  const el = document.createElement('div');
+  el.className = `power-up ${type}`;
+  el.textContent = icons[type];
+  el.dataset.type = type;
+
+  const w = gameContainer.offsetWidth, h = gameContainer.offsetHeight;
+  const size = Math.max(34, w * 0.09);
+  const left = Math.random() * Math.max(10, w - size);
+  const top = Math.random() * Math.max(10, h - size - 40) + 20;
+  el.style.left = `${left}px`;
+  el.style.top = `${top}px`;
+
+  gameContainer.appendChild(el);
+
+  const removeTimeout = setTimeout(() => {
+    if (el.parentNode) el.remove();
+  }, 8000);
+
+  const activate = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    clearTimeout(removeTimeout);
+    if (el.parentNode) el.remove();
+    activatePowerUp(type);
+  };
+  el.addEventListener('click', activate);
+  el.addEventListener('touchend', activate);
+}
+
+function activatePowerUp(type) {
+  if (!soundEnabled) { /* tetap aktifkan efek walau SFX mati */ }
+  playSpecialFishSound();
+  if (type === 'freeze') activateFreeze();
+  else if (type === 'magnet') activateMagnet();
+  else if (type === 'multiplier') activateMultiplier();
+}
+
+function showPowerupBadge(type, label, durationMs) {
+  clearPowerupBadge(type);
+  const badge = document.createElement('div');
+  badge.className = 'active-powerup-badge';
+  badge.textContent = label;
+  activePowerupsEl.appendChild(badge);
+  activePowerupBadges[type] = badge;
+  setTimeout(() => clearPowerupBadge(type), durationMs);
+}
+
+function clearPowerupBadge(type) {
+  const b = activePowerupBadges[type];
+  if (b && b.parentNode) b.remove();
+  delete activePowerupBadges[type];
+}
+
+// ❄️ Pembeku waktu: ikan (termasuk monster) berhenti bergerak sejenak
+function activateFreeze() {
+  freezeActive = true;
+  clearTimeout(freezeTimeout);
+  document.querySelectorAll('.ikan').forEach(f => f.classList.add('frozen-fx'));
+  showPowerupBadge('freeze', '❄️ Ikan Membeku', 4000);
+  freezeTimeout = setTimeout(() => {
+    freezeActive = false;
+    document.querySelectorAll('.ikan').forEach(f => f.classList.remove('frozen-fx'));
+  }, 4000);
+}
+
+// ✨ Pengganda skor sementara
+function activateMultiplier() {
+  scoreMultiplier = 2;
+  clearTimeout(multiplierTimeout);
+  showPowerupBadge('multiplier', '✨ Skor x2', 8000);
+  multiplierTimeout = setTimeout(() => {
+    scoreMultiplier = 1;
+  }, 8000);
+}
+
+// 🧲 Magnet: auto-tangkap ikan biasa terdekat beberapa detik
+function activateMagnet() {
+  clearInterval(magnetInterval);
+  clearTimeout(magnetTimeout);
+  showPowerupBadge('magnet', '🧲 Magnet Aktif', 6000);
+
+  magnetInterval = setInterval(() => {
+    if (!gameStarted || gamePaused) return;
+    const normalFish = ikanList.filter(f =>
+      f.parentNode &&
+      (f.dataset.fishType || '').startsWith('group') &&
+      f.dataset.caught !== '1'
+    );
+    if (normalFish.length === 0) return;
+
+    const cx = gameContainer.offsetWidth / 2;
+    const cy = gameContainer.offsetHeight / 2;
+    let nearest = null, nearestDist = Infinity;
+    normalFish.forEach(f => {
+      const fx = parseInt(f.style.left) || 0;
+      const fy = parseInt(f.style.top) || 0;
+      const d = Math.hypot(fx - cx, fy - cy);
+      if (d < nearestDist) { nearestDist = d; nearest = f; }
+    });
+    if (nearest) catchFish(nearest);
+  }, 700);
+
+  magnetTimeout = setTimeout(() => {
+    clearInterval(magnetInterval);
+    magnetInterval = null;
+  }, 6000);
+}
+
+function clearAllPowerUpEffects() {
+  freezeActive = false;
+  scoreMultiplier = 1;
+  clearTimeout(freezeTimeout);
+  clearTimeout(multiplierTimeout);
+  clearTimeout(magnetTimeout);
+  clearInterval(magnetInterval);
+  magnetInterval = null;
+  document.querySelectorAll('.ikan').forEach(f => f.classList.remove('frozen-fx'));
+  document.querySelectorAll('.power-up').forEach(el => el.remove());
+  Object.keys(activePowerupBadges).forEach(clearPowerupBadge);
+}
+// ================= END POWER-UP SYSTEM =================
+
+function createFish(onlyMissing = false) {
+  ikanImages.forEach((imgUrl, index) => {
+    const sudahAda = ikanList.some(ikan => parseInt(ikan.dataset.index) === index);
+    const terkenaMonster = removedIkanIndexes.includes(index);
+
+    // Jika onlyMissing true, hanya render ikan yang hilang karena monster
+    if (onlyMissing && (!terkenaMonster || sudahAda)) return;
+
+    // Jika onlyMissing false, render semua ikan yang belum ada
+    if (!onlyMissing && sudahAda) return;
+
+    const ikan = document.createElement('div');
+    ikan.className = 'ikan';
+    addFinWrap(ikan, imgUrl);
+
+    let baseSize = Math.max(45, Math.min(70, gameContainer.offsetWidth * 0.14));
+    if (level >= 7) baseSize *= 0.8;
+    if (index === 4) baseSize *= 0.7;
+    else if ([0,1,7,8].includes(index)) baseSize *= 1.1;
+
+    const minSize = window.innerWidth <= 480 ? 32 : 30;
+    baseSize = Math.max(baseSize, minSize);
+
+    ikan.style.width = `${baseSize}px`;
+    ikan.style.height = `${baseSize}px`;
+    ikan.dataset.index = index;
+    ikan.dataset.lastLeft = 0;
+    ikan.dataset.fishType = getFishType(index);
+
+    gameContainer.appendChild(ikan);
+    ikanList.push(ikan);
+
+    addTouchEvents(ikan);
+    moveIkan(ikan);
+    scheduleIkanMove(ikan);
+
+    // Hapus dari daftar ikan yang tertabrak monster
+    removedIkanIndexes = removedIkanIndexes.filter(i => i !== index);
+  });
+}
+
+
+
+  function createBubbles() {
+      for (let i = 0; i < 10; i++) {
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
+        bubble.style.left = `${Math.random() * 90 + 5}%`;
+        bubble.style.animationDelay = `${Math.random() * 3}s`;
+        gameContainer.appendChild(bubble);
+      }
+
+      const bubbleInterval = setInterval(() => {
+        if (gameStarted && !gamePaused) {
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble';
+          bubble.style.left = `${Math.random() * 90 + 5}%`;
+          gameContainer.appendChild(bubble);
+          
+          setTimeout(() => {
+            if (bubble.parentNode) {
+              bubble.remove();
+            }
+          }, 12000);
+        }
+      }, 1200);
+      gameIntervals.push(bubbleInterval);
+    }
+
+    function showLevelUp() {
+      const levelUpDiv = document.createElement('div');
+      levelUpDiv.className = 'level-up';
+      levelUpDiv.innerHTML = `Naik Level ${level} !`;
+      gameContainer.appendChild(levelUpDiv);
+      
+      if ('vibrate' in navigator) {
+        navigator.vibrate([100, 50, 100]);
+      }
+      
+      setTimeout(() => {
+        if (levelUpDiv.parentNode) {
+          levelUpDiv.remove();
+        }
+      }, 2000);
+    }
+
+    // Kenaikan target per level dibuat bertumbuh halus (bukan lompat besar lalu mendadak landai)
+    function getLevelIncrement(lvl) {
+      // Opsi Z - Kombinasi ekstrem: step level1→2 = 1000, tiap level berikutnya ×1.45
+      const baseStep = 1000;
+      const growth = 1.45;
+      return Math.round(baseStep * Math.pow(growth, lvl - 1));
+    }
+
+    function checkLevelUp() {
+      if (gameMode === 'survival') return; // Survival: tanpa target level — kesulitan naik lewat waktu saja
+      if (levelCompletePending) return; // sudah dalam proses level selesai, jangan proses lagi
+      if (score >= target) {
+        levelCompletePending = true;
+        triggerLevelComplete();
+      }
+    }
+
+    function triggerLevelComplete() {
+      gamePaused = true;
+      pauseButton.textContent = '▶️';
+
+      // Semua ikan yang tersisa langsung meledak (tanpa menambah skor)
+      explodeAllRemainingFish();
+
+      showFireworks();
+      setTimeout(() => {
+        showNextLevelOverlay();
+      }, 500);
+    }
+
+    // Meledakkan semua ikan yang masih ada di layar tanpa menambah skor,
+    // dengan sedikit jeda antar ledakan supaya terlihat seperti rentetan/chain reaction.
+    function explodeAllRemainingFish() {
+      const remaining = ikanList.slice();
+      ikanList = [];
+      remaining.forEach((fish, i) => {
+        setTimeout(() => {
+          if (fish.parentNode) {
+            createExplosion(fish);
+            fish.remove();
+          }
+        }, i * 55);
+      });
+    }
+
+    // ===== Efek kembang api besar & meriah =====
+    function showFireworks() {
+      const colors = ['#FFD700', '#FF6B35', '#4CAF50', '#2196F3', '#E91E63', '#9C27B0', '#00E5FF', '#FF1744'];
+      const burstCount = 14;
+      for (let i = 0; i < burstCount; i++) {
+        setTimeout(() => {
+          if (!gameContainer.isConnected) return;
+          createFireworkBurst(colors[Math.floor(Math.random() * colors.length)]);
+        }, i * 180 + Math.random() * 120);
+      }
+    }
+
+    function createFireworkBurst(color) {
+      const originX = 10 + Math.random() * 80;
+      const originY = 8 + Math.random() * 55;
+
+      const burst = document.createElement('div');
+      burst.className = 'firework-burst';
+      burst.style.left = `${originX}%`;
+      burst.style.top = `${originY}%`;
+      burst.style.color = color;
+      gameContainer.appendChild(burst);
+
+      const flash = document.createElement('div');
+      flash.className = 'firework-spark';
+      burst.appendChild(flash);
+
+      const particleCount = 16;
+      for (let p = 0; p < particleCount; p++) {
+        const particle = document.createElement('div');
+        particle.className = 'firework-particle';
+        const angle = (p / particleCount) * 2 * Math.PI;
+        const distance = 55 + Math.random() * 55;
+        particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+        particle.style.background = color;
+        particle.style.animationDelay = `${Math.random() * 0.08}s`;
+        burst.appendChild(particle);
+      }
+
+      if ('vibrate' in navigator) navigator.vibrate(15);
+
+      setTimeout(() => {
+        if (burst.parentNode) burst.remove();
+      }, 1300);
+    }
+
+    function showNextLevelOverlay() {
+      // Hindari overlay dobel
+      const existing = document.getElementById('next-level-overlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'next-level-overlay';
+      overlay.className = 'game-paused';
+      overlay.innerHTML = `
+        <div class="level-complete-inner">
+          <h3>🎉 Level ${level} Selesai! 🎉</h3>
+          <p>Skor kamu sekarang: ${score}</p>
+          <div class="pause-actions">
+            <button id="next-level-button">➡️ Next Level</button>
+          </div>
+        </div>
+      `;
+      gameContainer.appendChild(overlay);
+      fitPopupToContainer(overlay);
+
+      document.getElementById('next-level-button').addEventListener('click', () => {
+        overlay.remove();
+        advanceToNextLevel();
+      });
+    }
+
+    function advanceToNextLevel() {
+      const increment = getLevelIncrement(level);
+      level++;
+      target += increment;
+      levelCompletePending = false;
+
+      // Setiap ganti level, kurangi 5 hitungan salah klik secara otomatis (tidak boleh minus)
+      wrongClicks = Math.max(0, wrongClicks - 5);
+
+      showLevelUp();
+      updateDisplay();
+
+      // Ikan biasa muncul kembali segar untuk level baru
+      removedIkanIndexes = [];
+      createFish();
+
+      gamePaused = false;
+      pauseButton.textContent = '⏸️';
+      document.querySelectorAll('.ikan').forEach(fish => {
+        fish.style.animationPlayState = 'running';
+      });
+      document.querySelectorAll('.bubble').forEach(bubble => {
+        bubble.style.animationPlayState = 'running';
+      });
+    }
+
+    function showPauseOverlay() {
+      const overlay = document.createElement('div');
+      overlay.id = 'pause-overlay';
+      overlay.className = 'game-paused';
+      overlay.innerHTML = `
+        <h3>⏸️ GAME TERJEDA</h3>
+        <p>Klik di mana saja pada kotak ini untuk melanjutkan</p>
+        <div class="pause-actions">
+          <button id="resume-button">▶️ Lanjutkan</button>
+          <button id="quit-button">🚪 Keluar</button>
+        </div>
+      `;
+      gameContainer.appendChild(overlay);
+      fitPopupToContainer(overlay);
+
+      // Klik di area kotak (bukan tombol) langsung melanjutkan permainan
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay || e.target.tagName === 'H3' || e.target.tagName === 'P') {
+          togglePause();
+        }
+      });
+
+      document.getElementById('resume-button').addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePause();
+      });
+
+      document.getElementById('quit-button').addEventListener('click', (e) => {
+        e.stopPropagation();
+        showExitConfirm();
+      });
+    }
+
+    function hidePauseOverlay() {
+      const overlay = document.getElementById('pause-overlay');
+      if (overlay) overlay.remove();
+    }
+
+    // Menghitung tinggi maksimum popup berdasarkan ukuran ASLI kotak game (dalam px),
+    // bukan persentase CSS — supaya isi popup yang panjang selalu bisa discroll
+    // sampai habis, bukannya terpotong oleh batas kotak game.
+    function fitPopupToContainer(el) {
+      if (!el) return;
+      const apply = () => {
+        if (!el.isConnected) return;
+        const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const containerH = gameContainer.clientHeight || window.innerHeight;
+        const availableH = isFs ? window.innerHeight : containerH;
+        el.style.maxHeight = Math.max(120, Math.floor(availableH * 0.88)) + 'px';
+      };
+      // Tunggu satu frame supaya ukuran kotak game (termasuk saat baru masuk fullscreen) sudah final
+      requestAnimationFrame(apply);
+    }
+
+    function refitOpenPopups() {
+      document.querySelectorAll('.game-paused').forEach(fitPopupToContainer);
+    }
+
+    function showExitConfirm() {
+      hidePauseOverlay();
+      gamePaused = true;
+      pauseButton.textContent = '▶️';
+      document.querySelectorAll('.ikan').forEach(fish => {
+        fish.style.animationPlayState = 'paused';
+      });
+      document.querySelectorAll('.bubble').forEach(bubble => {
+        bubble.style.animationPlayState = 'paused';
+      });
+
+      const overlay = document.createElement('div');
+      overlay.id = 'exit-overlay';
+      overlay.className = 'game-paused';
+      overlay.innerHTML = `
+        <h3>🚪 Keluar dari Permainan?</h3>
+        <p>Progres skor saat ini akan hilang.<br>Skor tertinggi tetap tersimpan.</p>
+        <div class="pause-actions">
+          <button id="confirm-exit-button">Ya, Keluar</button>
+          <button id="cancel-exit-button">Batal</button>
+        </div>
+      `;
+      gameContainer.appendChild(overlay);
+      fitPopupToContainer(overlay);
+
+      document.getElementById('confirm-exit-button').addEventListener('click', () => {
+        overlay.remove();
+        updateHighScore(); // simpan skor tertinggi sebelum halaman di-refresh
+        exitFullscreenAndReload();
+      });
+      document.getElementById('cancel-exit-button').addEventListener('click', () => {
+        overlay.remove();
+        togglePause();
+      });
+    }
+
+    // Keluar dari mode layar penuh (jika sedang aktif) lalu refresh halaman,
+    // sehingga permainan selalu kembali ke kondisi awal & mode tidak fullscreen.
+    function exitFullscreenAndReload() {
+      const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+      if (isFullscreen) {
+        // fullscreenchange listener global akan otomatis me-refresh halaman
+        // begitu status fullscreen berubah menjadi tidak aktif.
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      } else {
+        location.reload();
+      }
+    }
+
+    function quitGame() {
+      gameIntervals.forEach(clearInterval);
+      gameIntervals = [];
+      gameStarted = false;
+      gamePaused = false;
+      clearAllPowerUpEffects();
+
+      updateHighScore();
+
+      document.querySelectorAll('.ikan, .bubble, .explosion, .level-up, .score-popup, .combo-popup, .firework-burst, #pause-overlay, #exit-overlay, #next-level-overlay').forEach(el => el.remove());
+
+      score = 0;
+      level = 1;
+      target = 1200;
+      missedMonsters = 0;
+      wrongClicks = 0;
+      consecutiveMiss = 0;
+      comboCount = 0;
+      levelCompletePending = false;
+      monstersExplodedCount = 0;
+      ikanList = [];
+
+      if (modeTimerDisplay) modeTimerDisplay.style.display = 'none';
+      stopBackgroundMusic();
+      if (modeSelect) modeSelect.disabled = false;
+
+      pauseButton.textContent = '⏸️';
+      startButton.textContent = '🐟 Mulai';
+      gameInfoBar.style.display = 'none';
+      updateDisplay();
+    }
+
+    function togglePause() {
+      if (document.getElementById('next-level-overlay')) return; // sedang menunggu klik "Next Level"
+      gamePaused = !gamePaused;
+      pauseButton.textContent = gamePaused ? '▶️' : '⏸️';
+      
+      if (gamePaused) {
+        showPauseOverlay();
+        document.querySelectorAll('.ikan').forEach(fish => {
+          fish.style.animationPlayState = 'paused';
+        });
+
+    document.querySelectorAll('.bubble').forEach(bubble => {
+      bubble.style.animationPlayState = 'paused';
+    });
+      } else {
+        hidePauseOverlay();
+	document.querySelectorAll('.ikan').forEach(fish => {
+	  fish.style.animationPlayState = 'running';
+	  if (!fish.dataset.manualMove) {
+	    moveIkan(fish);
+	}
+    });
+      }
+    }
+
+function gameOver(reason = "Permainan Berakhir!", opts = {}) {
+  if ('vibrate' in navigator) navigator.vibrate([100, 200, 100]);
+  gameStarted = false;
+  gamePaused = true;
+  gameIntervals.forEach(clearInterval);
+  gameIntervals = [];
+  clearAllPowerUpEffects();
+  stopBackgroundMusic();
+  if (modeSelect) modeSelect.disabled = false;
+
+  updateHighScore();
+  updateDisplay(); 
+
+  const isTimeUp = gameMode === 'timeAttack' && opts.timeUp;
+  const title = isTimeUp ? '⏱️ WAKTU HABIS!' : '💀 GAME OVER';
+
+  const overlay = document.createElement('div');
+  overlay.className = 'game-paused';
+  overlay.style.zIndex = '9999';
+  overlay.innerHTML = `
+    <h3>${title}</h3>
+    <p>${reason}</p>
+    <p>Skor Kamu: ${score}</p>
+    <p>🏆 Skor Tertinggi: ${highScore}</p>
+    <button id="restart-button">🔁 Main Lagi</button>
+  `;
+  gameContainer.appendChild(overlay);
+      fitPopupToContainer(overlay);
+
+  document.getElementById("restart-button").addEventListener("click", () => {
+    overlay.remove();
+    resetGame();
+  });
+}
+
+function resetGame() {
+  gameIntervals.forEach(clearInterval);
+  gameIntervals = [];
+
+  score = 0;
+  level = 1;
+  target = 1200;
+  missedMonsters = 0;
+  wrongClicks = 0;
+  consecutiveMiss = 0;
+  comboCount = 0;
+  levelCompletePending = false;
+  monstersExplodedCount = 0;
+  gamePaused = false;
+  gameStarted = true; // perbaikan: sebelumnya tidak pernah di-set true lagi setelah Game Over,
+                       // sehingga interval spawn ikan langka/emas/monster tak pernah aktif saat main ulang
+  if (modeSelect) modeSelect.disabled = true;
+  pauseButton.textContent = '⏸️';
+  startButton.textContent = '🔄 Ulang';
+  ikanList = [];
+
+  updateDisplay();
+  setupGame();
+}
+
+  function setupGame() {
+  document.querySelectorAll('.ikan, .bubble, .explosion, .level-up, .score-popup, .firework-burst, #next-level-overlay').forEach(el => el.remove());
+  hidePauseOverlay();
+  ikanList = [];
+  clearAllPowerUpEffects();
+
+  gameMode = modeSelect ? modeSelect.value : 'classic';
+  survivalStartTime = (gameMode === 'survival') ? Date.now() : 0;
+
+  startBackgroundMusic();
+  createBubbles();
+  createFish(); // render semua ikan awal (onlyMissing=false secara default) — dipanggil sekali saja
+
+  // Di mode Time Attack & Survival, ikan spesial & monster tidak menunggu level tertentu
+  const bypassLevelGate = (gameMode === 'timeAttack' || gameMode === 'survival');
+
+  // Spawn rare fish interval
+  const rareSpawnInterval = setInterval(() => {
+    if (gameStarted && !gamePaused && Math.random() < 0.12) {
+      spawnRareFish();
+    }
+  }, 4000);
+  gameIntervals.push(rareSpawnInterval);
+
+  // Spawn golden fish interval
+  const goldenSpawnInterval = setInterval(() => {
+  if (gameStarted && !gamePaused && (bypassLevelGate || level >= 3) && Math.random() < 0.15) {
+    spawnGoldenFish();
+  }
+}, 10000); // tiap 10 detik
+
+  gameIntervals.push(goldenSpawnInterval);
+
+  // Monster tidak pernah muncul di mode Zen (santai, tanpa monster)
+  if (gameMode !== 'zen') {
+    const monsterInterval = setInterval(() => {
+      if (gameStarted && !gamePaused && (bypassLevelGate || level >= 3) && Math.random() < 0.6) {
+        spawnMonsterFish();
+      }
+    }, 12000); // tiap 12 detik
+    gameIntervals.push(monsterInterval);
+  }
+
+  // Power-up: pembeku waktu, magnet, pengganda skor — aktif di semua mode
+  const powerUpInterval = setInterval(() => {
+    if (gameStarted && !gamePaused && Math.random() < 0.35) {
+      spawnPowerUp();
+    }
+  }, 9000);
+  gameIntervals.push(powerUpInterval);
+
+  // Time Attack: hitung mundur 60 detik, cetak skor sebanyak mungkin
+  if (gameMode === 'timeAttack') {
+    modeTimeLeft = 60;
+    modeTimerDisplay.style.display = '';
+    modeTimerDisplay.textContent = `⏱️ ${modeTimeLeft}`;
+    modeTimerInterval = setInterval(() => {
+      if (!gameStarted || gamePaused) return;
+      modeTimeLeft--;
+      modeTimerDisplay.textContent = `⏱️ ${modeTimeLeft}`;
+      if (modeTimeLeft <= 0) {
+        gameOver(`Skor akhir kamu: ${score}`, { timeUp: true });
+      }
+    }, 1000);
+    gameIntervals.push(modeTimerInterval);
+  } else if (gameMode === 'survival') {
+    // Survival: tampilkan berapa lama sudah bertahan, bukan hitung mundur
+    modeTimerDisplay.style.display = '';
+    modeTimerDisplay.textContent = `⏳ 0s`;
+    modeTimerInterval = setInterval(() => {
+      if (!gameStarted || gamePaused) return;
+      const elapsedSec = Math.floor((Date.now() - survivalStartTime) / 1000);
+      modeTimerDisplay.textContent = `⏳ ${elapsedSec}s`;
+    }, 1000);
+    gameIntervals.push(modeTimerInterval);
+  } else {
+    modeTimerDisplay.style.display = 'none';
+  }
+
+  updateDisplay();
+}  
+
+
+
+document.addEventListener("DOMContentLoaded", function () {
+  startButton.addEventListener("click", function () {
+    console.log("👑 Skor Tertinggi Sebelumnya:", highScore);
+    const selectedMode = modeSelect ? modeSelect.value : 'classic';
+
+    const modeIntro = {
+      classic: '🐟 <strong>Mode Klasik</strong> — kejar target level, hindari monster & salah klik.',
+      timeAttack: '⏱️ <strong>Time Attack</strong> — 60 detik, cetak skor sebanyak mungkin!',
+      zen: '🧘 <strong>Mode Zen</strong> — santai tanpa monster & tanpa kondisi kalah.',
+      survival: '🔥 <strong>Survival</strong> — tanpa target level, ikan makin cepat seiring waktu.'
+    };
+    const modeOverCondition = {
+      classic: 'GAME OVER jika:<br>- Monster Terlepas 5 kali<br>- Salah Klik 15 kali<br>- Ikan Habis Terkena Monster',
+      timeAttack: 'Permainan berakhir otomatis saat waktu 60 detik habis.',
+      zen: 'Tidak ada kondisi kalah — main sesantai mungkin!',
+      survival: 'GAME OVER jika:<br>- Monster Terlepas 5 kali<br>- Salah Klik 15 kali<br>- Ikan Habis Terkena Monster'
+    };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'game-paused';
+    overlay.style.zIndex = '9999';
+    overlay.innerHTML = `
+      <p> <strong>
+      PETUNJUK PERMAINAN<br></strong>
+      ${modeIntro[selectedMode] || modeIntro.classic}<br><br>
+      ✨ Ikan langka: 30 poin<br>
+      👑 Ikan emas: 40 poin<br>
+      🐙 Ikan monster: beberapa klik untuk meledakkan — pola beragam (normal, zigzag, pecah jadi dua, makin cepat)<br>
+      ❄️🧲✨ Power-up sesekali muncul: pembeku waktu, magnet, pengganda skor<br><br>
+      ${modeOverCondition[selectedMode] || modeOverCondition.classic}
+      </p>
+      <button id="restart-button">🔁 MULAI</button>
+    `;
+    gameContainer.appendChild(overlay);
+      fitPopupToContainer(overlay);
+
+    document.getElementById("restart-button").addEventListener("click", () => {
+      overlay.remove();
+      ensureAudioContext();
+      gameStarted = true;
+      startButton.textContent = "🔄 Ulang";
+      gameInfoBar.style.display = "flex";
+      if (modeSelect) modeSelect.disabled = true;
+      setupGame();
+    });
+  });
+
+  pauseButton.addEventListener("click", togglePause);
+
+  const exitButton = document.getElementById("exit-button");
+  if (exitButton) {
+    exitButton.addEventListener("click", () => {
+      if (!gameStarted) return;
+      showExitConfirm();
+    });
+  }
+
+  const fullscreenButton = document.getElementById("fullscreen-button");
+  if (fullscreenButton) {
+    fullscreenButton.addEventListener("click", function () {
+      const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+      if (isFullscreen) {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      } else if (document.documentElement.webkitRequestFullscreen) {
+        document.documentElement.webkitRequestFullscreen();
+      }
+    });
+  }
+
+  // Saat keluar dari mode layar penuh (baik lewat tombol maupun tombol Esc/back),
+  // langsung refresh halaman supaya tampilan kembali bersih ke mode tidak fullscreen.
+  let wasFullscreen = false;
+  function handleFullscreenChange() {
+    const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement);
+    if (wasFullscreen && !isFullscreen) {
+      location.reload();
+    }
+    wasFullscreen = isFullscreen;
+    refitOpenPopups();
+  }
+  document.addEventListener("fullscreenchange", handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+  window.addEventListener("resize", refitOpenPopups);
+  window.addEventListener("orientationchange", refitOpenPopups);
+
+  gameContainer.addEventListener("click", function (e) {
+    const isFish = e.target.classList.contains("ikan");
+    // Klik pada tombol apa pun (Next Level, pause, keluar, mute, fullscreen, restart, dll)
+    // atau di area popup/overlay TIDAK dihitung sebagai salah klik.
+    const isControl = !!e.target.closest("button, .game-paused, .pause-actions, .game-controls");
+    if (!isFish && !isControl && gameStarted && !gamePaused) {
+      wrongClicks++;
+      comboCount = 0;
+	playWrongClickSound();
+      console.log("Salah klik:", wrongClicks);
+      updateDisplay();
+      if (gameMode !== 'zen' && wrongClicks >= 15) {
+        gameOver("Terlalu banyak salah klik!");
+      }
+    }
+  });
+});
+
+
+function playWrongClickSound() {
+  ensureAudioContext();
+  if (!soundEnabled || !audioContext) return;
+  const osc = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(200, audioContext.currentTime);
+  gain.gain.setValueAtTime(0.5 * currentVolume, audioContext.currentTime);
+  osc.connect(gain);
+  gain.connect(audioContext.destination);
+  osc.start();
+  osc.stop(audioContext.currentTime + 0.2);
+}
+
+// Tambahan suara: ledakkan monster — dentuman rendah + semburan noise + chime kemenangan
+function playMonsterExplodeSound() {
+  ensureAudioContext();
+  if (!soundEnabled || !audioContext) return;
+
+  // Dentuman rendah, nada turun cepat, mensimulasikan "boom" ledakan
+  const boom = audioContext.createOscillator();
+  const boomGain = audioContext.createGain();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(160, audioContext.currentTime);
+  boom.frequency.exponentialRampToValueAtTime(35, audioContext.currentTime + 0.35);
+  boomGain.gain.setValueAtTime(0.6 * currentVolume, audioContext.currentTime);
+  boomGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
+  boom.connect(boomGain);
+  boomGain.connect(audioContext.destination);
+  boom.start();
+  boom.stop(audioContext.currentTime + 0.4);
+
+  // Semburan noise ber-filter lowpass, mensimulasikan tekstur "krak" ledakan nyata
+  playNoiseBurst({ duration: 0.35, filterType: 'lowpass', filterFreq: 900, filterQ: 0.7, gainPeak: 0.55, decay: 0.3 });
+
+  // Chime kemenangan singkat menyusul dentuman
+  const notes = [523.25, 659.25, 783.99]; // C5 E5 G5
+  notes.forEach((freq, i) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.frequency.setValueAtTime(freq, audioContext.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.18 * currentVolume, audioContext.currentTime + 0.15);
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.start(audioContext.currentTime + 0.15 + i * 0.09);
+    osc.stop(audioContext.currentTime + 0.15 + i * 0.09 + 0.18);
+  });
+}
+
+// Tambahan suara: ikan langka atau emas
+function playSpecialFishSound() {
+  ensureAudioContext();
+  if (!soundEnabled || !audioContext) return;
+  const notes = [523.25, 659.25]; // C5 E5
+  notes.forEach((freq, i) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+    gain.gain.setValueAtTime(0.2 * currentVolume, audioContext.currentTime);
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.start(audioContext.currentTime + i * 0.1);
+    osc.stop(audioContext.currentTime + i * 0.1 + 0.2);
+  });
+}
+
+// ================= MUSIK LATAR (loop, independen dari SFX) =================
+// Progresi akor lembut ala ambient — dimainkan berulang selagi permainan berjalan.
+const musicChords = [
+  [130.81, 164.81, 196.00],  // C3 E3 G3
+  [146.83, 174.61, 220.00],  // D3 F3 A3
+  [164.81, 196.00, 246.94],  // E3 G3 B3
+  [130.81, 164.81, 196.00]   // kembali ke C3 E3 G3
+];
+let musicChordIndex = 0;
+let musicScheduleTimeout = null;
+
+function playMusicChord() {
+  if (!audioContext || gamePaused) return;
+  const chord = musicChords[musicChordIndex % musicChords.length];
+  musicChordIndex++;
+  const now = audioContext.currentTime;
+  const chordDuration = 5.6;
+
+  chord.forEach((freq) => {
+    const osc = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.05 * currentVolume, now + 0.8);
+    gain.gain.linearRampToValueAtTime(0.03 * currentVolume, now + chordDuration - 1.2);
+    gain.gain.linearRampToValueAtTime(0, now + chordDuration);
+    osc.connect(gain);
+    gain.connect(audioContext.destination);
+    osc.start(now);
+    osc.stop(now + chordDuration + 0.1);
+  });
+}
+
+function scheduleMusicLoop() {
+  if (!musicEnabled || !gameStarted) return;
+  playMusicChord();
+  musicScheduleTimeout = setTimeout(scheduleMusicLoop, 6000);
+}
+
+function startBackgroundMusic() {
+  stopBackgroundMusic(); // hindari loop dobel jika dipanggil ulang
+  if (!musicEnabled) return;
+  ensureAudioContext();
+  if (!audioContext) return;
+  musicChordIndex = 0;
+  scheduleMusicLoop();
+}
+
+function stopBackgroundMusic() {
+  clearTimeout(musicScheduleTimeout);
+  musicScheduleTimeout = null;
+}
+
+// Tombol SFX 🔊 dan Musik 🎵 — independen satu sama lain
+if (sfxToggleButton) {
+  sfxToggleButton.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    sfxToggleButton.textContent = soundEnabled ? '🔊' : '🔇';
+  });
+}
+if (musicToggleButton) {
+  musicToggleButton.addEventListener('click', () => {
+    musicEnabled = !musicEnabled;
+    musicToggleButton.textContent = musicEnabled ? '🎵' : '🔕';
+    if (musicEnabled && gameStarted) {
+      startBackgroundMusic();
+    } else {
+      stopBackgroundMusic();
+    }
+  });
+}
+
+// --- PWA: daftarkan service worker supaya game bisa jalan offline ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .catch((err) => console.warn('Gagal mendaftarkan service worker:', err));
+  });
+}
+</script>
+</body>
+</html>
