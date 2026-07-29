@@ -8,11 +8,11 @@
   <!-- PWA: manifest & ikon -->
   <link rel="manifest" href="./manifest.json" />
   <meta name="theme-color" content="#4682B4" />
-  <link rel="icon" type="image/png" sizes="192x192" href="./icons/ficon-192.png" />
-  <link rel="icon" type="image/png" sizes="512x512" href="./icons/ficon-512.png" />
+  <link rel="ficon" type="image/png" sizes="192x192" href="./ficons/ficon-192.png" />
+  <link rel="ficon" type="image/png" sizes="512x512" href="./ficons/ficon-512.png" />
 
   <!-- PWA: dukungan iOS Safari (Add to Home Screen) -->
-  <link rel="apple-touch-icon" href="./icons/ficon-192.png" />
+  <link rel="apple-touch-ficon" href="./ficons/ficon-192.png" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Fished" />
@@ -1834,11 +1834,11 @@ function spawnPowerUp() {
   if (!gameStarted || gamePaused) return;
   const types = ['freeze', 'magnet', 'multiplier'];
   const type = types[Math.floor(Math.random() * types.length)];
-  const icons = { freeze: '❄️', magnet: '🧲', multiplier: '✨' };
+  const ficons = { freeze: '❄️', magnet: '🧲', multiplier: '✨' };
 
   const el = document.createElement('div');
   el.className = `power-up ${type}`;
-  el.textContent = icons[type];
+  el.textContent = ficons[type];
   el.dataset.type = type;
 
   const w = gameContainer.offsetWidth, h = gameContainer.offsetHeight;
