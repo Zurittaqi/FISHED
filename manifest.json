@@ -8,27 +8,27 @@
   "orientation": "portrait",
   "background_color": "#4682B4",
   "theme_color": "#4682B4",
-  "icons": [
+  "ficons": [
     {
-      "src": "ficons/icon-192.png",
+      "src": "ficons/ficon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "ficons/icon-192.png",
+      "src": "ficons/ficon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "ficons/icon-512.png",
+      "src": "ficons/ficon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "ficons/icon-512.png",
+      "src": "ficons/ficon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
